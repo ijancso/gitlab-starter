@@ -1,0 +1,49 @@
+# CI/CD pipeline for the numstats starter.
+# Designed to run on a self-hosted GitLab CE instance with a Docker-executor
+# runner. Each job runs in a fresh python:3.12-slim container.
+
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  image: python:3.12-slim
+  cache:
+    key:
+      files:
+        - pyproject.toml
+    paths:
+      - .cache/pip
+  before_script:
+    - python --version
+    - pip install --upgrade pip
+    - pip install -e ".[dev]"
+
+lint:
+  stage: lint
+  script:
+    - ruff check .
+
+test:
+  stage: test
+  script:
+    - pytest --cov=numstats --cov-report=term --junitxml=report.xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?%|[1-9]?\d(?:\.\d+)?%)$/'
+  artifacts:
+    when: always
+    expire_in: 1 week
+    reports:
+      junit: report.xml
+
+build:
+  stage: build
+  script:
+    - python -m build
+  artifacts:
+    paths:
+      - dist/*.whl
+    expire_in: 1 week

@@ -1,0 +1,21 @@
+# Optional: mirror the lint+test steps on GitHub Actions so the public
+# portfolio repo shows live green check marks. The "real" self-hosted pipeline
+# is .gitlab-ci.yml -- this is only here so GitHub visitors see CI is passing.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: pytest --cov=numstats

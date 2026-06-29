@@ -1,0 +1,62 @@
+# Self-hosted GitLab CE + GitLab Runner for local development.
+#
+# Brings up a full GitLab instance plus one Docker-executor runner on your
+# machine, so you can run this repo's .gitlab-ci.yml pipeline locally.
+#
+#   docker compose up -d
+#
+# IMPORTANT: GitLab and your browser must agree on one URL. Add this line to
+# your host's /etc/hosts so "gitlab" resolves both on the host and inside
+# containers:
+#
+#   127.0.0.1 gitlab
+#
+# Then open http://gitlab:8929 (the first start takes a few minutes).
+# See ../docs/SETUP.md for the full walkthrough.
+
+services:
+  gitlab:
+    image: gitlab/gitlab-ce:latest      # pin a version (e.g. gitlab/gitlab-ce:17.11.1-ce.0) for reproducibility
+    container_name: gitlab
+    restart: unless-stopped
+    hostname: gitlab
+    shm_size: "256m"
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab:8929'
+        gitlab_rails['gitlab_shell_ssh_port'] = 2224
+        # Trim resource use for a local dev box:
+        puma['worker_processes'] = 2
+        sidekiq['concurrency'] = 5
+        prometheus_monitoring['enable'] = false
+    ports:
+      - "8929:8929"     # HTTP (must match the port in external_url)
+      - "2224:22"       # SSH for git-over-ssh
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    networks:
+      - gitlab-net
+
+  gitlab-runner:
+    image: gitlab/gitlab-runner:latest
+    container_name: gitlab-runner
+    restart: unless-stopped
+    depends_on:
+      - gitlab
+    volumes:
+      - gitlab-runner-config:/etc/gitlab-runner
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - gitlab-net
+
+networks:
+  gitlab-net:
+    name: gitlab-net          # fixed name so the runner's --docker-network-mode matches
+
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
+  gitlab-runner-config:
