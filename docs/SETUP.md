@@ -308,3 +308,58 @@ host you may need to adjust socket permissions or the runner's group.
 **Push to `gitlab` remote is rejected / asks endlessly for a password** — create
 a Project Access Token (Settings → Access Tokens, `write_repository` scope) and
 use it as the password with username `root`.
+
+**Notes from a real Windows 10 setup**
+
+These are extra notes from actually doing this on a Windows 10 laptop. They go
+beyond the steps above, in case you hit the same problems.
+
+**Docker Desktop says "Starting..." and never finishes.** This usually means
+virtualization is turned off in the BIOS. Open PowerShell and run:
+
+```powershell
+Get-ComputerInfo -Property HyperVRequirementVirtualizationFirmwareEnabled
+```
+
+If this says `False`, restart the laptop, enter the BIOS (on a Lenovo ThinkPad,
+tap F1 while booting), go to **Security → Virtualization**, and turn on
+**Intel Virtualization Technology**. Save and exit. Docker Desktop should start
+normally after the restart.
+
+**The pipeline shows "Pending" or "stuck" forever, even though the runner has a
+green dot.** The runner might not actually be reading its config file. Check
+the runner's logs:
+
+```powershell
+docker logs gitlab-runner --tail 50
+```
+
+If you see repeated lines like `Failed to load config: no such file or
+directory`, the runner's saved settings got lost or corrupted. The fix is to
+wipe that runner's data and register it again from scratch:
+
+```powershell
+docker compose down
+docker volume rm local-gitlab_gitlab-runner-config
+docker compose up -d
+```
+
+Wait a few minutes for GitLab to fully start again, then create a brand new
+runner in the GitLab UI and register it (see step 1.5 and 1.6 above). You will
+get a new `glrt-` token each time you create a new runner — always use the
+newest one.
+
+**There are two kinds of runners in GitLab, and only one of them works for
+this project.** A "project runner" only works for one project (this is what
+you want). An "instance runner" is shared across the whole GitLab installation
+and lives under the Admin Area, not under a project's own Settings. If you
+only see an option to create an "instance runner", you are probably looking at
+the Admin Area by mistake. Go to the project itself, then
+**Settings → CI/CD → Runners**, and look for **"New project runner"** there
+instead.
+
+**After fixing the runner, an old pipeline still shows "Failed" or "stuck"
+from before the fix.** That old pipeline ran under the broken runner setup and
+will not fix itself. Ignore it and start a fresh one instead:
+**Build → Pipelines → New pipeline → Run pipeline** on the `main` branch. The
+new run will use the current, working runner.
