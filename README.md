@@ -25,8 +25,7 @@ and a three-stage pipeline that lints, tests, and builds the package.
 | `test`  | Unit tests + coverage, JUnit report | `pytest`, `pytest-cov` |
 | `build` | Build a distributable wheel (artifact) | `python -m build` |
 
-<!-- Replace with a screenshot of your green pipeline from the GitLab UI: -->
-<!-- ![Green pipeline](docs/img/pipeline-green.png) -->
+![Green pipeline](docs/img/pipeline-green.jpg)
 
 ## Quickstart (just the app)
 
