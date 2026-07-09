@@ -1,11 +1,18 @@
-# CI/CD pipeline for the numstats starter.
-# Designed to run on a self-hosted GitLab CE instance with a Docker-executor
-# runner. Each job runs in a fresh python:3.12-slim container.
+# CI/CD pipeline for the flightlog project.
+# Runs on a self-hosted GitLab CE instance with a Docker-executor runner.
+# Each stage runs in a fresh python:3.12-slim container.
+#
+#   lint -> validate -> test -> process -> render
+#
+# Only the render stage installs matplotlib (the [viz] extra), so the earlier
+# stages stay fast.
 
 stages:
   - lint
+  - validate
   - test
-  - build
+  - process
+  - render
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -18,20 +25,27 @@ default:
         - pyproject.toml
     paths:
       - .cache/pip
-  before_script:
-    - python --version
-    - pip install --upgrade pip
-    - pip install -e ".[dev]"
 
 lint:
   stage: lint
+  before_script:
+    - pip install --upgrade pip && pip install -e ".[dev]"
   script:
     - ruff check .
 
+validate:
+  stage: validate
+  before_script:
+    - pip install --upgrade pip && pip install -e .
+  script:
+    - flightlog validate data/sample_flight.csv
+
 test:
   stage: test
+  before_script:
+    - pip install --upgrade pip && pip install -e ".[dev]"
   script:
-    - pytest --cov=numstats --cov-report=term --junitxml=report.xml
+    - pytest --cov=flightlog --cov-report=term --junitxml=report.xml
   coverage: '/(?i)total.*? (100(?:\.0+)?%|[1-9]?\d(?:\.\d+)?%)$/'
   artifacts:
     when: always
@@ -39,11 +53,24 @@ test:
     reports:
       junit: report.xml
 
-build:
-  stage: build
+process:
+  stage: process
+  before_script:
+    - pip install --upgrade pip && pip install -e .
   script:
-    - python -m build
+    - flightlog process data/sample_flight.csv --out metrics.json
   artifacts:
     paths:
-      - dist/*.whl
+      - metrics.json
     expire_in: 1 week
+
+render:
+  stage: render
+  before_script:
+    - pip install --upgrade pip && pip install -e ".[viz]"
+  script:
+    - flightlog render data/sample_flight.csv --out flight-report.png
+  artifacts:
+    paths:
+      - flight-report.png
+    expire_in: 1 month

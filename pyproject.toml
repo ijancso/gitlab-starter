@@ -1,7 +1,7 @@
 [project]
-name = "numstats"
+name = "flightlog"
 version = "0.1.0"
-description = "A tiny statistics CLI used as a self-hosted GitLab CI/CD starter project."
+description = "Validate drone telemetry logs and render a visual flight report -- a self-hosted GitLab CI/CD demo."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -9,7 +9,7 @@ authors = [{ name = "Istvan" }]
 dependencies = []
 
 [project.scripts]
-numstats = "numstats.cli:main"
+flightlog = "flightlog.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -17,6 +17,9 @@ dev = [
     "pytest-cov>=5",
     "ruff>=0.6",
     "build>=1.2",
+]
+viz = [
+    "matplotlib>=3.8",
 ]
 
 [build-system]
@@ -37,3 +40,8 @@ select = ["E", "F", "I", "UP", "B"]
 addopts = "-q"
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+# matplotlib backend must be selected before importing pyplot, so imports in
+# the render module are intentionally not all at the top of the file.
+"src/flightlog/render.py" = ["E402"]

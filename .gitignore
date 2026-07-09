@@ -12,3 +12,6 @@ htmlcov/
 report.xml
 .venv/
 venv/
+out/
+/metrics.json
+/flight-report.png

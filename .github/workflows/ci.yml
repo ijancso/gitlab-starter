@@ -1,6 +1,6 @@
-# Optional: mirror the lint+test steps on GitHub Actions so the public
-# portfolio repo shows live green check marks. The "real" self-hosted pipeline
-# is .gitlab-ci.yml -- this is only here so GitHub visitors see CI is passing.
+# Optional GitHub Actions mirror: lints, tests, validates the log, and builds
+# the flight report so the public repo shows passing checks and a downloadable
+# artifact. The real self-hosted pipeline is .gitlab-ci.yml.
 name: CI
 
 on:
@@ -9,13 +9,19 @@ on:
   pull_request:
 
 jobs:
-  lint-and-test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev,viz]"
       - run: ruff check .
-      - run: pytest --cov=numstats
+      - run: pytest --cov=flightlog
+      - run: flightlog validate data/sample_flight.csv
+      - run: flightlog report data/sample_flight.csv --out-dir out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flight-report
+          path: out/
