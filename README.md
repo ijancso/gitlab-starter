@@ -21,6 +21,10 @@ takeoff/landing markers, plus altitude and battery charts.
   commit, alongside the test results
 - Dependency discipline: only the `render` stage installs matplotlib (`[viz]`
   extra), so the earlier stages stay fast
+  
+## Architecture
+
+![System architecture](docs/img/architecture.png)
 
 ## Pipeline
 
