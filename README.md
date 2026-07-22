@@ -77,6 +77,48 @@ checks and uploads the report, so the GitHub page also shows passing CI.
    to GitLab's registry.
 4. Pipeline metrics (duration, logs processed) pushed to Prometheus + Grafana.
 
+---
+
+## Geospatial track service
+
+A standalone PostGIS + FastAPI service that ingests drone telemetry and serves flight paths as GeoJSON — a runnable, queryable slice of what a production geoscience data platform looks like at small scale.
+
+### Run it
+
+```bash
+# 1. Create your credentials file (never committed — .env is gitignored)
+cp .env.example .env
+
+# 2. Start PostGIS + the API (waits for DB health before starting the API)
+docker compose -f docker-compose.geo.yml up --build -d
+
+# 3. Ingest the sample flight (run from the project root)
+DATABASE_URL=postgresql://geo:geopassword@localhost:5432/flightlog \
+  python -m geo.ingest data/sample_flight.csv
+
+# 4. Query the track
+curl http://localhost:8000/flights/1/track
+```
+
+The `/health` endpoint is also available:
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok"}
+```
+
+### Design notes
+
+**Why PostGIS?** PostGIS gives us first-class spatial types and functions inside an ACID-compliant database. Storing raw lat/lon floats in a plain Postgres table would work for simple distance queries, but the moment you need bounding-box lookups, spatial joins, or format conversions the SQL becomes hand-rolled and fragile. With PostGIS those operations are a single function call (`ST_Within`, `ST_Intersects`, `ST_AsGeoJSON`) and they run against a spatial index rather than a full scan.
+
+**Why idempotent ingest?** CI pipelines retry failed jobs. A data pipeline that creates duplicate rows on retry is worse than one that fails loudly — you end up with silent data corruption. The ingest script uses `INSERT ... ON CONFLICT (source_file) DO NOTHING`: if the file was already processed, the entire transaction is a no-op. This makes re-running safe without needing a separate deduplication job.
+
+**Why build the LineString in SQL?** `ST_MakeLine(geom ORDER BY time_s)` is an aggregate function — it folds all track_points for a flight into a single geometry in one pass, with ordering guaranteed by the database. The alternative (fetching all points into Python, sorting, then constructing a GeoJSON object) costs an extra round-trip, moves sorting responsibility to application code, and requires a geometry library dependency. The SQL approach is faster, shorter, and keeps the spatial logic where the spatial data lives.
+
+**Next steps (not built here):** authentication on the API, a tile server endpoint (`/flights/{id}/tiles/{z}/{x}/{y}`), streaming ingest for large files via `COPY`, and a Grafana dashboard backed by the PostGIS queries.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
