@@ -67,16 +67,17 @@ def ingest(csv_path: str, database_url: str) -> int:
                 for r in reader
             ]
 
-        conn.executemany(
-            """
-            INSERT INTO track_points (flight_id, time_s, altitude, battery_v, speed_ms, geom)
-            VALUES (
-                %s, %s, %s, %s, %s,
-                ST_SetSRID(ST_MakePoint(%s, %s, %s), 4326)
+        with conn.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT INTO track_points (flight_id, time_s, altitude, battery_v, speed_ms, geom)
+                VALUES (
+                    %s, %s, %s, %s, %s,
+                    ST_SetSRID(ST_MakePoint(%s, %s, %s), 4326)
+                )
+                """,
+                rows,
             )
-            """,
-            rows,
-        )
 
         conn.commit()
         print(f"Ingested {len(rows)} track points for flight_id={flight_id}")
