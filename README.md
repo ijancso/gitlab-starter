@@ -97,13 +97,13 @@ DATABASE_URL=postgresql://geo:geopassword@localhost:5432/flightlog \
   python -m geo.ingest data/sample_flight.csv
 
 # 4. Query the track
-curl http://localhost:8000/flights/1/track
+curl http://localhost:8001/flights/1/track
 ```
 
 The `/health` endpoint is also available:
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 # {"status":"ok"}
 ```
 
