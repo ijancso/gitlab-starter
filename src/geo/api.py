@@ -1,13 +1,22 @@
 import json
 import os
+from contextlib import asynccontextmanager
 
 import asyncpg
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
-app = FastAPI(title="flightlog geo API")
-
 _pool: asyncpg.Pool | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    if _pool:
+        await _pool.close()
+
+
+app = FastAPI(title="flightlog geo API", lifespan=lifespan)
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -16,12 +25,6 @@ async def get_pool() -> asyncpg.Pool:
         db_url = os.environ["DATABASE_URL"]
         _pool = await asyncpg.create_pool(db_url, min_size=1, max_size=5)
     return _pool
-
-
-@app.on_event("shutdown")
-async def shutdown() -> None:
-    if _pool:
-        await _pool.close()
 
 
 @app.get("/health")
